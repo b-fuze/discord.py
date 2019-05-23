@@ -3,7 +3,7 @@
 """
 The MIT License (MIT)
 
-Copyright (c) 2015-2019 Rapptz
+Copyright (c) 2015-2018 Rapptz
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -35,16 +35,14 @@ class RawMessageDeleteEvent:
         The guild ID where the deletion took place, if applicable.
     message_id: :class:`int`
         The message ID that got deleted.
-    cached_message: Optional[:class:`Message`]
-        The cached message, if found in the internal message cache.
     """
 
-    __slots__ = ('message_id', 'channel_id', 'guild_id', 'cached_message')
+    __slots__ = ('message_id', 'channel_id', 'guild_id')
 
     def __init__(self, data):
         self.message_id = int(data['id'])
         self.channel_id = int(data['channel_id'])
-        self.cached_message = None
+
         try:
             self.guild_id = int(data['guild_id'])
         except KeyError:
@@ -61,16 +59,13 @@ class RawBulkMessageDeleteEvent:
         The channel ID where the message got deleted.
     guild_id: Optional[:class:`int`]
         The guild ID where the message got deleted, if applicable.
-    cached_messages: List[:class:`Message`]
-        The cached messages, if found in the internal message cache.
     """
 
-    __slots__ = ('message_ids', 'channel_id', 'guild_id', 'cached_messages')
+    __slots__ = ('message_ids', 'channel_id', 'guild_id')
 
     def __init__(self, data):
-        self.message_ids = {int(x) for x in data.get('ids', [])}
+        self.message_ids = { int(x) for x in data.get('ids', []) }
         self.channel_id = int(data['channel_id'])
-        self.cached_messages = []
 
         try:
             self.guild_id = int(data['guild_id'])
@@ -86,17 +81,14 @@ class RawMessageUpdateEvent:
         The message ID that got updated.
     data: :class:`dict`
         The raw data given by the
-        `gateway <https://discordapp.com/developers/docs/topics/gateway#message-update>`
-    cached_message: Optional[:class:`Message`]
-        The cached message, if found in the internal message cache.
+        `gateway <https://discordapp.com/developers/docs/topics/gateway#message-update>`_
     """
 
-    __slots__ = ('message_id', 'data', 'cached_message')
+    __slots__ = ('message_id', 'data')
 
     def __init__(self, data):
         self.message_id = int(data['id'])
         self.data = data
-        self.cached_message = None
 
 class RawReactionActionEvent:
     """Represents the payload for a :func:`on_raw_reaction_add` or
@@ -107,7 +99,7 @@ class RawReactionActionEvent:
     message_id: :class:`int`
         The message ID that got or lost a reaction.
     user_id: :class:`int`
-        The user ID who added the reaction or whose reaction was removed.
+        The user ID who added or removed the reaction.
     channel_id: :class:`int`
         The channel ID where the reaction got added or removed.
     guild_id: Optional[:class:`int`]

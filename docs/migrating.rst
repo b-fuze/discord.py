@@ -14,13 +14,6 @@ new library.
 Part of the redesign involves making things more easy to use and natural. Things are done on the
 :ref:`models <discord_api_models>` instead of requiring a :class:`Client` instance to do any work.
 
-Python Version Change
------------------------
-
-In order to make development easier and also to allow for our dependencies to upgrade to allow usage of 3.7 or higher,
-the library had to remove support for Python versions lower than 3.5.3, which essentially means that **support for Python 3.4
-is dropped**.
-
 Major Model Changes
 ---------------------
 
@@ -148,13 +141,9 @@ A list of these changes is enumerated below.
 +---------------------------------------+------------------------------------------------------------------------------+
 | ``Client.get_bans``                   | :meth:`Guild.bans`                                                           |
 +---------------------------------------+------------------------------------------------------------------------------+
-| ``Client.get_invite``                 | :meth:`Client.fetch_invite`                                                  |
-+---------------------------------------+------------------------------------------------------------------------------+
-| ``Client.get_message``                | :meth:`abc.Messageable.fetch_message`                                        |
+| ``Client.get_message``                | :meth:`abc.Messageable.get_message`                                          |
 +---------------------------------------+------------------------------------------------------------------------------+
 | ``Client.get_reaction_users``         | :meth:`Reaction.users`                                                       |
-+---------------------------------------+------------------------------------------------------------------------------+
-| ``Client.get_user_info``              | :meth:`Client.fetch_user`                                                    |
 +---------------------------------------+------------------------------------------------------------------------------+
 | ``Client.invites_from``               | :meth:`abc.GuildChannel.invites` or :meth:`Guild.invites`                    |
 +---------------------------------------+------------------------------------------------------------------------------+
@@ -205,6 +194,8 @@ A list of these changes is enumerated below.
 | ``Client.wait_for_reaction``          | :meth:`Client.wait_for` (see :ref:`migrating_1_0_wait_for`)                  |
 +---------------------------------------+------------------------------------------------------------------------------+
 | ``Client.wait_until_login``           | Removed                                                                      |
++---------------------------------------+------------------------------------------------------------------------------+
+| ``Client.messages``                   | Removed                                                                      |
 +---------------------------------------+------------------------------------------------------------------------------+
 | ``Client.wait_until_ready``           | No change                                                                    |
 +---------------------------------------+------------------------------------------------------------------------------+
@@ -328,10 +319,6 @@ They will be enumerated here.
 
     - Use :attr:`Client.emojis` instead.
 
-` ``Client.messages``
-
-    - Use read-only :attr:`Client.cached_messages` instead.
-
 - ``Client.wait_for_message`` and ``Client.wait_for_reaction`` are gone.
 
     - Use :meth:`Client.wait_for` instead.
@@ -372,19 +359,13 @@ They will be enumerated here.
 
 - ``Member.game``
 
-    - Use :attr:`Member.activities` instead.
-
-- ``Guild.role_hierarchy`` / ``Server.role_hierarchy``
-
-    - Use :attr:`Guild.roles` instead. Note that while sorted, it is in the opposite order
-      of what the old ``Guild.role_hierarchy`` used to be.
+    - Use :attr:`Member.activity` instead.
 
 **Changed**
 
 - :attr:`Member.avatar_url` and :attr:`User.avatar_url` now return the default avatar if a custom one is not set.
 - :attr:`Message.embeds` is now a list of :class:`Embed` instead of ``dict`` objects.
 - :attr:`Message.attachments` is now a list of :class:`Attachment` instead of ``dict`` object.
-- :attr:`Guild.roles` is now sorted through hierarchy. The first element is always the ``@everyone`` role.
 
 **Added**
 
@@ -410,7 +391,6 @@ They will be enumerated here.
 - :attr:`Message.activity` and :attr:`Message.application` for Rich Presence related information.
 - :meth:`TextChannel.is_nsfw` to check if a text channel is NSFW.
 - :meth:`Colour.from_rgb` to construct a :class:`Colour` from RGB tuple.
-- :meth:`Guild.get_role` to get a role by its ID.
 
 .. _migrating_1_0_sending_messages:
 
@@ -461,14 +441,14 @@ Prior to v1.0, certain functions like ``Client.logs_from`` would return a differ
 In v1.0, this change has been reverted and will now return a singular type meeting an abstract concept called
 :class:`AsyncIterator`.
 
-This allows you to iterate over it like normal: ::
+This allows you to iterate over it like normal in Python 3.5+: ::
 
     async for message in channel.history():
         print(message)
 
-Or turn it into a list: ::
+Or turn it into a list for either Python 3.4 or 3.5+: ::
 
-    messages = await channel.history().flatten()
+    messages = await channel.history().flatten() # use yield from for 3.4!
     for message in messages:
         print(message)
 
@@ -803,25 +783,21 @@ will either DM the user in a DM context or send a message in the channel it was 
 functionality. The old helpers have been removed in favour of the new :class:`abc.Messageable` interface. See
 :ref:`migrating_1_0_removed_helpers` for more information.
 
-Since the :class:`~ext.commands.Context` is now passed by default, several shortcuts have been added:
+Since the :class:`~ext.commands.Context` is now by default passed, several shortcuts have been added:
 
 **New Shortcuts**
 
-- :attr:`ctx.author <ext.commands.Context.author>` is a shortcut for ``ctx.message.author``.
-- :attr:`ctx.guild <ext.commands.Context.guild>` is a shortcut for ``ctx.message.guild``.
-- :attr:`ctx.channel <ext.commands.Context.channel>` is a shortcut for ``ctx.message.channel``.
-- :attr:`ctx.me <ext.commands.Context.me>` is a shortcut for ``ctx.message.guild.me`` or ``ctx.bot.user``.
-- :attr:`ctx.voice_client <ext.commands.Context.voice_client>` is a shortcut for ``ctx.message.guild.voice_client``.
+- :attr:`~ext.commands.Context.author` is a shortcut for ``ctx.message.author``.
+- :attr:`~ext.commands.Context.guild` is a shortcut for ``ctx.message.guild``.
+- :attr:`~ext.commands.Context.channel` is a shortcut for ``ctx.message.channel``.
+- :attr:`~ext.commands.Context.me` is a shortcut for ``ctx.message.guild.me`` or ``ctx.bot.user``.
+- :attr:`~ext.commands.Context.voice_client` is a shortcut for ``ctx.message.guild.voice_client``.
 
 **New Functionality**
 
-- :meth:`.Context.reinvoke` to invoke a command again.
+- :meth:`~.Context.reinvoke` to invoke a command again.
 
     - This is useful for bypassing cooldowns.
-- :attr:`.Context.valid` to check if a context can be invoked with :meth:`.Bot.invoke`.
-- :meth:`.Context.send_help` to show the help command for an entity using the new :class:`~.ext.commands.HelpCommand` system.
-
-    - This is useful if you want to show the user help if they misused a command.
 
 Subclassing Context
 ++++++++++++++++++++
@@ -946,120 +922,50 @@ The error handlers, either :meth:`.Command.error` or :func:`.on_command_error`,
 have been re-ordered to use the :class:`~ext.commands.Context` as its first parameter to be consistent with other events
 and commands.
 
-HelpFormatter and Help Command Changes
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-The :class:`~.commands.HelpFormatter` class has been removed. It has been replaced with a :class:`~.commands.HelpCommand` class. This class now stores all the command handling and processing of the help command.
-
-The help command is now stored in the :attr:`.Bot.help_command` attribute. As an added extension, you can disable the help command completely by assigning the attribute to ``None`` or passing it at ``__init__`` as ``help_command=None``.
-
-The new interface allows the help command to be customised through special methods that can be overridden.
-
-- :meth:`.HelpCommand.send_bot_help`
-    - Called when the user requested for help with the entire bot.
-- :meth:`.HelpCommand.send_cog_help`
-    - Called when the user requested for help with a specific cog.
-- :meth:`.HelpCommand.send_group_help`
-    - Called when the user requested for help with a :class:`~.commands.Group`
-- :meth:`.HelpCommand.send_command_help`
-    - Called when the user requested for help with a :class:`~.commands.Command`
-- :meth:`.HelpCommand.get_destination`
-    - Called to know where to send the help messages. Useful for deciding whether to DM or not.
-- :meth:`.HelpCommand.command_not_found`
-    - A function (or coroutine) that returns a presentable no command found string.
-- :meth:`.HelpCommand.subcommand_not_found`
-    - A function (or coroutine) that returns a string when a subcommand is not found.
-- :meth:`.HelpCommand.send_error_message`
-    - A coroutine that gets passed the result of :meth:`.HelpCommand.command_not_found` and :meth:`.HelpCommand.subcommand_not_found`.
-    - By default it just sends the message. But you can, for example, override it to put it in an embed.
-- :meth:`.HelpCommand.on_help_command_error`
-    - The :ref:`error handler <ext_commands_error_handler>` for the help command if you want to add one.
-- :meth:`.HelpCommand.prepare_help_command`
-    - A coroutine that is called right before the help command processing is done.
-
-Certain subclasses can implement more customisable methods.
-
-The old ``HelpFormatter`` was replaced with :class:`~.commands.DefaultHelpCommand`\, which implements all of the logic of the old help command. The customisable methods can be found in the accompanying documentation.
-
-The library now provides a new more minimalistic :class:`~.commands.HelpCommand` implementation that doesn't take as much space, :class:`~.commands.MinimalHelpCommand`. The customisable methods can also be found in the accompanying documentation.
-
-A frequent request was if you could associate a help command with a cog. The new design allows for dynamically changing of cog through binding it to the :attr:`.HelpCommand.cog` attribute. After this assignment the help command will pretend to be part of the cog and everything should work as expected. When the cog is unloaded then the help command will be "unbound" from the cog.
-
-For example, to implement a :class:`~.commands.HelpCommand` in a cog, the following snippet can be used.
-
-.. code-block:: python3
-
-    class MyHelpCommand(commands.MinimalHelpCommand):
-        def get_command_signature(self, command):
-            return '{0.clean_prefix}{1.qualified_name} {1.signature}'.format(self, command)
-
-    class MyCog(commands.Cog):
-        def __init__(self, bot):
-            self._original_help_command = bot.help_command
-            bot.help_command = MyHelpCommand()
-            bot.help_command.cog = self
-
-        def cog_unload(self):
-            self.bot.help_command = self._original_help_command
-
-For more information, check out the relevant :ref:`documentation <ext_commands_help_command>`.
-
 Cog Changes
 ~~~~~~~~~~~~~
 
-Cogs have completely been revamped. They are documented in :ref:`ext_commands_cogs` as well.
+Cog special methods have changed slightly.
 
-Cogs are now required to have a base class, :class:`~.commands.Cog` for future proofing purposes. This comes with special methods to customise some behaviour.
+The previous ``__check`` special method has been renamed to ``__global_check`` to make it more clear that it's a global
+check.
 
-* :meth:`.Cog.cog_unload`
-    - This is called when a cog needs to do some cleanup, such as cancelling a task.
-* :meth:`.Cog.bot_check_once`
-    - This registers a :meth:`.Bot.check_once` check.
-* :meth:`.Cog.bot_check`
-    - This registers a regular :meth:`.Bot.check` check.
-* :meth:`.Cog.cog_check`
-    - This registers a check that applies to every command in the cog.
-* :meth:`.Cog.cog_command_error`
-    - This is a special error handler that is called whenever an error happens inside the cog.
-* :meth:`.Cog.cog_before_invoke` and :meth:`.Cog.cog_after_invoke`
-    - A special method that registers a cog before and after invoke hook. More information can be found in :ref:`migrating_1_0_before_after_hook`.
+To complement the new ``__global_check`` there is now a new ``__local_check`` to facilitate a check that will run on
+every command in the cog. There is also a ``__global_check_once``, which is similar to a global check instead it is only
+called once per :meth:`.Bot.invoke` call rather than every :meth:`.Command.invoke` call. Practically, the difference is
+only for black-listing users or channels without constantly opening a database connection.
 
-Those that were using listeners, such as ``on_message`` inside a cog will now have to explicitly mark them as such using the :meth:`.commands.Cog.listener` decorator.
+Cogs have also gained a ``__before_invoke`` and ``__after_invoke`` cog local before and after invocation hook, which
+can be seen in :ref:`migrating_1_0_before_after_hook`.
 
-Along with that, cogs have gained the ability to have custom names through specifying it in the class definition line. More options can be found in the metaclass that facilitates all this, :class:`.commands.CogMeta`.
+The final addition is cog-local error handler, ``__error``, that is run on every command in the cog.
 
-An example cog with every special method registered and a custom name is as follows:
+An example cog with every special method registered is as follows: ::
 
-.. code-block:: python3
-
-    class MyCog(commands.Cog, name='Example Cog'):
-        def cog_unload(self):
+    class Cog:
+        def __unload(self):
             print('cleanup goes here')
 
-        def bot_check(self, ctx):
-            print('bot check')
+        def __global_check(self, ctx):
+            print('cog global check')
             return True
 
-        def bot_check_once(self, ctx):
-            print('bot check once')
+        def __global_check_once(self, ctx):
+            print('cog global check once')
             return True
 
-        async def cog_check(self, ctx):
+        async def __local_check(self, ctx):
             print('cog local check')
             return await ctx.bot.is_owner(ctx.author)
 
-        async def cog_command_error(self, ctx, error):
+        async def __error(self, ctx, error):
             print('Error in {0.command.qualified_name}: {1}'.format(ctx, error))
 
-        async def cog_before_invoke(self, ctx):
+        async def __before_invoke(self, ctx):
             print('cog local before: {0.command.qualified_name}'.format(ctx))
 
-        async def cog_after_invoke(self, ctx):
+        async def __after_invoke(self, ctx):
             print('cog local after: {0.command.qualified_name}'.format(ctx))
-
-        @commands.Cog.listener()
-        async def on_message(self, message):
-            pass
 
 
 .. _migrating_1_0_before_after_hook:
@@ -1108,15 +1014,13 @@ The per-command registration is as follows: ::
         # do something after the foo command is called
         pass
 
-The special cog method for these is :meth:`.Cog.cog_before_invoke` and :meth:`.Cog.cog_after_invoke`, e.g.:
+The special cog method for these is ``__before_invoke`` and ``__after_invoke``, e.g.: ::
 
-.. code-block:: python3
-
-    class MyCog(commands.Cog):
-        async def cog_before_invoke(self, ctx):
+    class Cog:
+        async def __before_invoke(self, ctx):
             ctx.secret_cog_data = 'foo'
 
-        async def cog_after_invoke(self, ctx):
+        async def __after_invoke(self, ctx):
             print('{0.command} is done...'.format(ctx))
 
         @commands.command()

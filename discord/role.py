@@ -3,7 +3,7 @@
 """
 The MIT License (MIT)
 
-Copyright (c) 2015-2019 Rapptz
+Copyright (c) 2015-2017 Rapptz
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -23,6 +23,8 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 """
+
+import asyncio
 
 from .permissions import Permissions
 from .errors import InvalidArgument
@@ -92,7 +94,7 @@ class Role(Hashable):
     """
 
     __slots__ = ('id', 'name', 'permissions', 'color', 'colour', 'position',
-                 'managed', 'mentionable', 'hoist', 'guild', '_state')
+                 'managed', 'mentionable', 'hoist', 'guild', '_state' )
 
     def __init__(self, *, guild, state, data):
         self.guild = guild
@@ -112,12 +114,6 @@ class Role(Hashable):
 
         if self.guild != other.guild:
             raise RuntimeError('cannot compare roles from two different guilds.')
-
-        # the @everyone role is always the lowest role in hierarchy
-        guild_id = self.guild.id
-        if self.id == guild_id:
-            # everyone_role < everyone_role -> False
-            return other.id != guild_id
 
         if self.position < other.position:
             return True
@@ -173,10 +169,10 @@ class Role(Hashable):
         if self.is_default():
             return all_members
 
-        role_id = self.id
-        return [member for member in all_members if member._roles.has(role_id)]
+        return [member for member in all_members if self in member.roles]
 
-    async def _move(self, position, reason):
+    @asyncio.coroutine
+    def _move(self, position, reason):
         if position <= 0:
             raise InvalidArgument("Cannot move role to position 0 or below")
 
@@ -189,7 +185,10 @@ class Role(Hashable):
         http = self._state.http
 
         change_range = range(min(self.position, position), max(self.position, position) + 1)
-        roles = [r.id for r in self.guild.roles[1:] if r.position in change_range and r.id != self.id]
+        sorted_roles = sorted((x for x in self.guild.roles if x.position in change_range and x.id != self.id),
+                              key=lambda x: x.position)
+
+        roles = [r.id for r in sorted_roles]
 
         if self.position > position:
             roles.insert(0, self.id)
@@ -197,9 +196,10 @@ class Role(Hashable):
             roles.append(self.id)
 
         payload = [{"id": z[0], "position": z[1]} for z in zip(roles, change_range)]
-        await http.move_role_position(self.guild.id, payload, reason=reason)
+        yield from http.move_role_position(self.guild.id, payload, reason=reason)
 
-    async def edit(self, *, reason=None, **fields):
+    @asyncio.coroutine
+    def edit(self, *, reason=None, **fields):
         """|coro|
 
         Edits the role.
@@ -211,20 +211,20 @@ class Role(Hashable):
 
         Parameters
         -----------
-        name: :class:`str`
+        name: str
             The new role name to change to.
         permissions: :class:`Permissions`
             The new permissions to change to.
         colour: :class:`Colour`
             The new colour to change to. (aliased to color as well)
-        hoist: :class:`bool`
+        hoist: bool
             Indicates if the role should be shown separately in the member list.
-        mentionable: :class:`bool`
+        mentionable: bool
             Indicates if the role should be mentionable by others.
-        position: :class:`int`
+        position: int
             The new role's position. This must be below your top role's
             position or it will fail.
-        reason: Optional[:class:`str`]
+        reason: Optional[str]
             The reason for editing this role. Shows up on the audit log.
 
         Raises
@@ -240,7 +240,7 @@ class Role(Hashable):
 
         position = fields.get('position')
         if position is not None:
-            await self._move(position, reason=reason)
+            yield from self._move(position, reason=reason)
             self.position = position
 
         try:
@@ -256,10 +256,11 @@ class Role(Hashable):
             'mentionable': fields.get('mentionable', self.mentionable)
         }
 
-        data = await self._state.http.edit_role(self.guild.id, self.id, reason=reason, **payload)
+        data = yield from self._state.http.edit_role(self.guild.id, self.id, reason=reason, **payload)
         self._update(data)
 
-    async def delete(self, *, reason=None):
+    @asyncio.coroutine
+    def delete(self, *, reason=None):
         """|coro|
 
         Deletes the role.
@@ -269,7 +270,7 @@ class Role(Hashable):
 
         Parameters
         -----------
-        reason: Optional[:class:`str`]
+        reason: Optional[str]
             The reason for deleting this role. Shows up on the audit log.
 
         Raises
@@ -280,4 +281,4 @@ class Role(Hashable):
             Deleting the role failed.
         """
 
-        await self._state.http.delete_role(self.guild.id, self.id, reason=reason)
+        yield from self._state.http.delete_role(self.guild.id, self.id, reason=reason)

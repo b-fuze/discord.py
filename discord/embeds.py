@@ -3,7 +3,7 @@
 """
 The MIT License (MIT)
 
-Copyright (c) 2015-2019 Rapptz
+Copyright (c) 2015-2017 Rapptz
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -36,9 +36,6 @@ class _EmptyEmbed:
     def __repr__(self):
         return 'Embed.Empty'
 
-    def __len__(self):
-        return 0
-
 EmptyEmbed = _EmptyEmbed()
 
 class EmbedProxy:
@@ -57,12 +54,8 @@ class EmbedProxy:
 class Embed:
     """Represents a Discord embed.
 
-    .. container:: operations
-
-        .. describe:: len(x)
-
-            Returns the total size of the embed.
-            Useful for checking if it's within the 6000 character limit.
+    The following attributes can be set during creation
+    of the object:
 
     Certain properties return an ``EmbedProxy``. Which is a type
     that acts similar to a regular :class:`dict` except access the attributes
@@ -77,22 +70,16 @@ class Embed:
     -----------
     title: :class:`str`
         The title of the embed.
-        This can be set during initialisation.
     type: :class:`str`
         The type of embed. Usually "rich".
-        This can be set during initialisation.
     description: :class:`str`
         The description of the embed.
-        This can be set during initialisation.
     url: :class:`str`
         The URL of the embed.
-        This can be set during initialisation.
     timestamp: `datetime.datetime`
         The timestamp of the embed content. This could be a naive or aware datetime.
-        This can be set during initialisation.
     colour: :class:`Colour` or :class:`int`
         The colour code of the embed. Aliased to ``color`` as well.
-        This can be set during initialisation.
     Empty
         A special sentinel value used by ``EmbedProxy`` and this class
         to denote that the value or attribute is empty.
@@ -125,28 +112,14 @@ class Embed:
             self.timestamp = timestamp
 
     @classmethod
-    def from_dict(cls, data):
-        """Converts a :class:`dict` to a :class:`Embed` provided it is in the
-        format that Discord expects it to be in.
-
-        You can find out about this format in the `official Discord documentation`__.
-
-        .. _DiscordDocs: https://discordapp.com/developers/docs/resources/channel#embed-object
-
-        __ DiscordDocs_
-
-        Parameters
-        -----------
-        data: :class:`dict`
-            The dictionary to convert into an embed.
-        """
+    def from_data(cls, data):
         # we are bypassing __init__ here since it doesn't apply here
         self = cls.__new__(cls)
 
         # fill in the basic fields
 
         self.title = data.get('title', EmptyEmbed)
-        self.type = data.get('type', EmptyEmbed)
+        self.type  = data.get('type', EmptyEmbed)
         self.description = data.get('description', EmptyEmbed)
         self.url = data.get('url', EmptyEmbed)
 
@@ -171,31 +144,6 @@ class Embed:
                 setattr(self, '_' + attr, value)
 
         return self
-
-    def copy(self):
-        """Returns a shallow copy of the embed."""
-        return Embed.from_dict(self.to_dict())
-
-    def __len__(self):
-        total = len(self.title) + len(self.description)
-        for field in getattr(self, '_fields', []):
-            total += len(field['name']) + len(field['value'])
-
-        try:
-            footer = self._footer
-        except AttributeError:
-            pass
-        else:
-            total += len(footer['text'])
-
-        try:
-            author = self._author
-        except AttributeError:
-            pass
-        else:
-            total += len(author['name'])
-
-        return total
 
     @property
     def colour(self):
@@ -241,9 +189,9 @@ class Embed:
 
         Parameters
         -----------
-        text: :class:`str`
+        text: str
             The footer text.
-        icon_url: :class:`str`
+        icon_url: str
             The URL of the footer icon. Only HTTP(S) is supported.
         """
 
@@ -279,7 +227,7 @@ class Embed:
 
         Parameters
         -----------
-        url: :class:`str`
+        url: str
             The source URL for the image. Only HTTP(S) is supported.
         """
 
@@ -312,7 +260,7 @@ class Embed:
 
         Parameters
         -----------
-        url: :class:`str`
+        url: str
             The source URL for the thumbnail. Only HTTP(S) is supported.
         """
 
@@ -364,11 +312,11 @@ class Embed:
 
         Parameters
         -----------
-        name: :class:`str`
+        name: str
             The name of the author.
-        url: :class:`str`
+        url: str
             The URL for the author.
-        icon_url: :class:`str`
+        icon_url: str
             The URL of the author icon. Only HTTP(S) is supported.
         """
 
@@ -402,11 +350,11 @@ class Embed:
 
         Parameters
         -----------
-        name: :class:`str`
+        name: str
             The name of the field.
-        value: :class:`str`
+        value: str
             The value of the field.
-        inline: :class:`bool`
+        inline: bool
             Whether the field should be displayed inline.
         """
 
@@ -443,7 +391,7 @@ class Embed:
 
         Parameters
         -----------
-        index: :class:`int`
+        index: int
             The index of the field to remove.
         """
         try:
@@ -461,13 +409,13 @@ class Embed:
 
         Parameters
         -----------
-        index: :class:`int`
+        index: int
             The index of the field to modify.
-        name: :class:`str`
+        name: str
             The name of the field.
-        value: :class:`str`
+        value: str
             The value of the field.
-        inline: :class:`bool`
+        inline: bool
             Whether the field should be displayed inline.
 
         Raises
@@ -512,10 +460,7 @@ class Embed:
             pass
         else:
             if timestamp:
-                if timestamp.tzinfo:
-                    result['timestamp'] = timestamp.astimezone(tz=datetime.timezone.utc).isoformat()
-                else:
-                    result['timestamp'] = timestamp.replace(tzinfo=datetime.timezone.utc).isoformat()
+                result['timestamp'] = timestamp.isoformat()
 
         # add in the non raw attribute ones
         if self.type:

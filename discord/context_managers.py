@@ -3,7 +3,7 @@
 """
 The MIT License (MIT)
 
-Copyright (c) 2015-2019 Rapptz
+Copyright (c) 2015-2017 Rapptz
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -26,11 +26,13 @@ DEALINGS IN THE SOFTWARE.
 
 import asyncio
 
+from .compat import create_task
+
 def _typing_done_callback(fut):
     # just retrieve any exception and call it a day
     try:
         fut.exception()
-    except Exception:
+    except:
         pass
 
 class Typing:
@@ -38,30 +40,33 @@ class Typing:
         self.loop = messageable._state.loop
         self.messageable = messageable
 
-    async def do_typing(self):
+    @asyncio.coroutine
+    def do_typing(self):
         try:
             channel = self._channel
         except AttributeError:
-            channel = await self.messageable._get_channel()
+            channel = yield from self.messageable._get_channel()
 
         typing = channel._state.http.send_typing
 
         while True:
-            await typing(channel.id)
-            await asyncio.sleep(5)
+            yield from typing(channel.id)
+            yield from asyncio.sleep(5)
 
     def __enter__(self):
-        self.task = asyncio.ensure_future(self.do_typing(), loop=self.loop)
+        self.task = create_task(self.do_typing(), loop=self.loop)
         self.task.add_done_callback(_typing_done_callback)
         return self
 
     def __exit__(self, exc_type, exc, tb):
         self.task.cancel()
 
-    async def __aenter__(self):
-        self._channel = channel = await self.messageable._get_channel()
-        await channel._state.http.send_typing(channel.id)
+    @asyncio.coroutine
+    def __aenter__(self):
+        self._channel = channel = yield from self.messageable._get_channel()
+        yield from channel._state.http.send_typing(channel.id)
         return self.__enter__()
 
-    async def __aexit__(self, exc_type, exc, tb):
+    @asyncio.coroutine
+    def __aexit__(self, exc_type, exc, tb):
         self.task.cancel()

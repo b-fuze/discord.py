@@ -11,6 +11,4 @@ extension library that handles this for you.
     :maxdepth: 2
 
     commands
-    cogs
-    extensions
     api

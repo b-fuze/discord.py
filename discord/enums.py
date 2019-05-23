@@ -3,7 +3,7 @@
 """
 The MIT License (MIT)
 
-Copyright (c) 2015-2019 Rapptz
+Copyright (c) 2015-2017 Rapptz
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -24,57 +24,23 @@ FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 """
 
-from enum import Enum
+from enum import Enum, IntEnum
 
-__all__ = (
-    'ChannelType',
-    'MessageType',
-    'VoiceRegion',
-    'SpeakingState',
-    'VerificationLevel',
-    'ContentFilter',
-    'Status',
-    'DefaultAvatar',
-    'RelationshipType',
-    'AuditLogAction',
-    'AuditLogActionCategory',
-    'UserFlags',
-    'ActivityType',
-    'HypeSquadHouse',
-    'NotificationLevel',
-    'PremiumType',
-    'UserContentFilter',
-    'FriendFlags',
-    'Theme',
-)
+__all__ = ['ChannelType', 'MessageType', 'VoiceRegion', 'VerificationLevel',
+           'ContentFilter', 'Status', 'DefaultAvatar', 'RelationshipType',
+           'AuditLogAction', 'AuditLogActionCategory', 'UserFlags',
+           'ActivityType', ]
 
-def fast_lookup(cls):
-    # NOTE: implies hashable
-    try:
-        lookup = cls._value2member_map_
-    except AttributeError:
-        lookup = {
-            member.value: member
-            for member in cls.__members__
-        }
-    finally:
-        cls.__fast_value_lookup__ = lookup
-        return cls
-
-@fast_lookup
 class ChannelType(Enum):
     text     = 0
     private  = 1
     voice    = 2
     group    = 3
     category = 4
-    news     = 5
-    store    = 6
 
     def __str__(self):
         return self.name
 
-@fast_lookup
 class MessageType(Enum):
     default             = 0
     recipient_add       = 1
@@ -85,7 +51,6 @@ class MessageType(Enum):
     pins_add            = 6
     new_member          = 7
 
-@fast_lookup
 class VoiceRegion(Enum):
     us_west       = 'us-west'
     us_east       = 'us-east'
@@ -101,9 +66,6 @@ class VoiceRegion(Enum):
     brazil        = 'brazil'
     hongkong      = 'hongkong'
     russia        = 'russia'
-    japan         = 'japan'
-    southafrica   = 'southafrica'
-    india         = 'india'
     vip_us_east   = 'vip-us-east'
     vip_us_west   = 'vip-us-west'
     vip_amsterdam = 'vip-amsterdam'
@@ -111,21 +73,7 @@ class VoiceRegion(Enum):
     def __str__(self):
         return self.value
 
-@fast_lookup
-class SpeakingState(Enum):
-    none       = 0
-    voice      = 1
-    soundshare = 2
-    priority   = 4
-
-    def __str__(self):
-        return self.name
-
-    def __int__(self):
-        return self.value
-
-@fast_lookup
-class VerificationLevel(Enum):
+class VerificationLevel(IntEnum):
     none              = 0
     low               = 1
     medium            = 2
@@ -137,8 +85,7 @@ class VerificationLevel(Enum):
     def __str__(self):
         return self.name
 
-@fast_lookup
-class ContentFilter(Enum):
+class ContentFilter(IntEnum):
     disabled    = 0
     no_role     = 1
     all_members = 2
@@ -146,26 +93,6 @@ class ContentFilter(Enum):
     def __str__(self):
         return self.name
 
-@fast_lookup
-class UserContentFilter(Enum):
-    disabled    = 0
-    friends     = 1
-    all_messages = 2
-
-@fast_lookup
-class FriendFlags(Enum):
-    noone = 0
-    mutual_guilds = 1
-    mutual_friends = 2
-    guild_and_friends = 3
-    everyone = 4
-
-@fast_lookup
-class Theme(Enum):
-    light = 'light'
-    dark = 'dark'
-
-@fast_lookup
 class Status(Enum):
     online = 'online'
     offline = 'offline'
@@ -177,7 +104,6 @@ class Status(Enum):
     def __str__(self):
         return self.value
 
-@fast_lookup
 class DefaultAvatar(Enum):
     blurple = 0
     grey    = 1
@@ -189,25 +115,17 @@ class DefaultAvatar(Enum):
     def __str__(self):
         return self.name
 
-@fast_lookup
 class RelationshipType(Enum):
     friend           = 1
     blocked          = 2
     incoming_request = 3
     outgoing_request = 4
 
-@fast_lookup
-class NotificationLevel(Enum):
-    all_messages  = 0
-    only_mentions = 1
-
-@fast_lookup
 class AuditLogActionCategory(Enum):
     create = 1
     delete = 2
     update = 3
 
-@fast_lookup
 class AuditLogAction(Enum):
     guild_update             = 1
     channel_create           = 10
@@ -290,63 +208,25 @@ class AuditLogAction(Enum):
         elif v < 80:
             return 'message'
 
-@fast_lookup
 class UserFlags(Enum):
     staff = 1
     partner = 2
     hypesquad = 4
-    bug_hunter = 8
-    hypesquad_bravery = 64
-    hypesquad_brilliance = 128
-    hypesquad_balance = 256
-    early_supporter = 512
 
-@fast_lookup
-class ActivityType(Enum):
+class ActivityType(IntEnum):
     unknown = -1
     playing = 0
     streaming = 1
     listening = 2
     watching = 3
 
-@fast_lookup
-class HypeSquadHouse(Enum):
-    bravery = 1
-    brilliance = 2
-    balance = 3
-
-@fast_lookup
-class PremiumType(Enum):
-    nitro_classic = 1
-    nitro = 2
 
 def try_enum(cls, val):
     """A function that tries to turn the value into enum ``cls``.
 
     If it fails it returns the value instead.
     """
-
-    # For some ungodly reason, `cls(x)` is *really* slow
-    # For most use cases it's about 750ns per call
-    # Internally this is dispatched like follows:
-    # cls(x)
-    # cls.__new__(cls, x)
-    # cls._value2member_map[x]
-    # if above fails ^
-    # find it in cls._member_map.items()
-
-    # Accessing the _value2member_map directly gives the biggest
-    # boost to performance, from 750ns to 130ns
-
-    # Now, the weird thing is that regular dict access is approx 31ns
-    # So there's a slowdown in the attribute access somewhere in the
-    # __getattr__ chain that I can't do much about
-
-    # Since this relies on internals the enums have an internal shim
-    # decorator that defines an alias for my own purposes or creates
-    # it for me under __fast_value_lookup__
-
     try:
-        return cls.__fast_value_lookup__[val]
-    except (KeyError, AttributeError):
+        return cls(val)
+    except ValueError:
         return val

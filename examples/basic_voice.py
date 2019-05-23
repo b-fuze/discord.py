@@ -24,6 +24,7 @@ ytdl_format_options = {
 }
 
 ffmpeg_options = {
+    'before_options': '-nostdin',
     'options': '-vn'
 }
 
@@ -52,7 +53,7 @@ class YTDLSource(discord.PCMVolumeTransformer):
         return cls(discord.FFmpegPCMAudio(filename, **ffmpeg_options), data=data)
 
 
-class Music(commands.Cog):
+class Music:
     def __init__(self, bot):
         self.bot = bot
 
@@ -101,7 +102,7 @@ class Music(commands.Cog):
         if ctx.voice_client is None:
             return await ctx.send("Not connected to a voice channel.")
 
-        ctx.voice_client.source.volume = volume / 100
+        ctx.voice_client.source.volume = volume
         await ctx.send("Changed volume to {}%".format(volume))
 
     @commands.command()

@@ -16,19 +16,20 @@ The following section outlines the API of discord.py.
 Version Related Info
 ---------------------
 
-There are two main ways to query version information about the library. For guarantees, check :ref:`version_guarantees`.
+There are two main ways to query version information about the library.
 
 .. data:: version_info
 
-    A named tuple that is similar to :obj:`py:sys.version_info`.
+    A named tuple that is similar to `sys.version_info`_.
 
-    Just like :obj:`py:sys.version_info` the valid values for ``releaselevel`` are
+    Just like `sys.version_info`_ the valid values for ``releaselevel`` are
     'alpha', 'beta', 'candidate' and 'final'.
+
+    .. _sys.version_info: https://docs.python.org/3.5/library/sys.html#sys.version_info
 
 .. data:: __version__
 
-    A string representation of the version. e.g. ``'1.0.0rc1'``. This is based
-    off of `PEP-440 <https://www.python.org/dev/peps/pep-0440/>`_.
+    A string representation of the version. e.g. ``'0.10.0-alpha0'``.
 
 Client
 -------
@@ -37,9 +38,6 @@ Client
     :members:
 
 .. autoclass:: AutoShardedClient
-    :members:
-
-.. autoclass:: AppInfo
     :members:
 
 Voice
@@ -82,7 +80,7 @@ overriding the specific events. For example: ::
 
     class MyClient(discord.Client):
         async def on_message(self, message):
-            if message.author == self.user:
+            if message.author != self.user:
                 return
 
             if message.content.startswith('$hello'):
@@ -95,8 +93,17 @@ to handle it, which defaults to print a traceback and ignoring the exception.
 .. warning::
 
     All the events must be a |corourl|_. If they aren't, then you might get unexpected
-    errors. In order to turn a function into a coroutine they must be ``async def``
-    functions.
+    errors. In order to turn a function into a coroutine they must either be ``async def``
+    functions or in 3.4 decorated with :func:`asyncio.coroutine`.
+
+    The following two functions are examples of coroutine functions: ::
+
+        async def on_ready():
+            pass
+
+        @asyncio.coroutine
+        def on_ready():
+            pass
 
 .. function:: on_connect()
 
@@ -104,14 +111,6 @@ to handle it, which defaults to print a traceback and ignoring the exception.
     the same as the client being fully prepared, see :func:`on_ready` for that.
 
     The warnings on :func:`on_ready` also apply.
-
-.. function:: on_disconnect()
-
-    Called when the client has disconnected from Discord. This could happen either through
-    the internet being disconnected, explicit calls to logout, or Discord terminating the connection
-    one way or the other.
-
-    This function can be called many times.
 
 .. function:: on_ready()
 
@@ -142,12 +141,12 @@ to handle it, which defaults to print a traceback and ignoring the exception.
     printed to stderr and the exception is ignored. If you want to
     change this behaviour and handle the exception for whatever reason
     yourself, this event can be overridden. Which, when done, will
-    suppress the default action of printing the traceback.
+    supress the default action of printing the traceback.
 
-    The information of the exception raised and the exception itself can
-    be retrieved with a standard call to ``sys.exc_info()``.
+    The information of the exception rasied and the exception itself can
+    be retreived with a standard call to ``sys.exc_info()``.
 
-    If you want exception to propagate out of the :class:`Client` class
+    If you want exception to propogate out of the :class:`Client` class
     you can define an ``on_error`` handler consisting of a single empty
     ``raise`` statement.  Exceptions raised by ``on_error`` will not be
     handled in any way by :class:`Client`.
@@ -156,7 +155,7 @@ to handle it, which defaults to print a traceback and ignoring the exception.
     :param args: The positional arguments for the event that raised the
         exception.
     :param kwargs: The keyword arguments for the event that raised the
-        exception.
+        execption.
 
 .. function:: on_socket_raw_receive(msg)
 
@@ -226,45 +225,25 @@ to handle it, which defaults to print a traceback and ignoring the exception.
 .. function:: on_message_delete(message)
 
     Called when a message is deleted. If the message is not found in the
-    internal message cache, then this event will not be called.
-    Messages might not be in cache if the message is too old
-    or the client is participating in high traffic guilds.
-
-    If this occurs increase the :attr:`Client.max_messages` attribute.
+    :attr:`Client.messages` cache, then these events will not be called. This
+    happens if the message is too old or the client is participating in high
+    traffic guilds. To fix this, increase the ``max_messages`` option of
+    :class:`Client`.
 
     :param message: A :class:`Message` of the deleted message.
-
-.. function:: on_bulk_message_delete(messages)
-
-    Called when messages are bulk deleted. If none of the messages deleted
-    are found in the internal message cache, then this event will not be called.
-    If individual messages were not found in the internal message cache,
-    this event will still be called, but the messages not found will not be included in
-    the messages list. Messages might not be in cache if the message is too old
-    or the client is participating in high traffic guilds.
-
-    If this occurs increase the :attr:`Client.max_messages` attribute.
-
-    :param messages: A :class:`list` of :class:`Message` that have been deleted.
 
 .. function:: on_raw_message_delete(payload)
 
     Called when a message is deleted. Unlike :func:`on_message_delete`, this is
     called regardless of the message being in the internal message cache or not.
 
-    If the message is found in the message cache,
-    it can be accessed via :attr:`RawMessageDeleteEvent.cached_message`
-
     :param payload: The raw event payload data.
     :type payload: :class:`RawMessageDeleteEvent`
 
 .. function:: on_raw_bulk_message_delete(payload)
 
-    Called when a bulk delete is triggered. Unlike :func:`on_bulk_message_delete`, this is
-    called regardless of the messages being in the internal message cache or not.
-
-    If the messages are found in the message cache,
-    they can be accessed via :attr:`RawBulkMessageDeleteEvent.cached_messages`
+    Called when a bulk delete is triggered. This event is called regardless
+    of the message IDs being in the internal message cache or not.
 
     :param payload: The raw event payload data.
     :type payload: :class:`RawBulkMessageDeleteEvent`
@@ -272,11 +251,9 @@ to handle it, which defaults to print a traceback and ignoring the exception.
 .. function:: on_message_edit(before, after)
 
     Called when a :class:`Message` receives an update event. If the message is not found
-    in the internal message cache, then these events will not be called.
-    Messages might not be in cache if the message is too old
-    or the client is participating in high traffic guilds.
-
-    If this occurs increase the :attr:`Client.max_messages` attribute.
+    in the :attr:`Client.messages` cache, then these events will not be called.
+    This happens if the message is too old or the client is participating in high
+    traffic guilds. To fix this, increase the ``max_messages`` option of :class:`Client`.
 
     The following non-exhaustive cases trigger this event:
 
@@ -296,9 +273,6 @@ to handle it, which defaults to print a traceback and ignoring the exception.
     Called when a message is edited. Unlike :func:`on_message_edit`, this is called
     regardless of the state of the internal message cache.
 
-    If the message is found in the message cache,
-    it can be accessed via :attr:`RawMessageUpdateEvent.cached_message`
-
     Due to the inherently raw nature of this event, the data parameter coincides with
     the raw data given by the `gateway <https://discordapp.com/developers/docs/topics/gateway#message-update>`_
 
@@ -312,8 +286,8 @@ to handle it, which defaults to print a traceback and ignoring the exception.
 
 .. function:: on_reaction_add(reaction, user)
 
-    Called when a message has a reaction added to it. Similar to :func:`on_message_edit`,
-    if the message is not found in the internal message cache, then this
+    Called when a message has a reaction added to it. Similar to on_message_edit,
+    if the message is not found in the :attr:`Client.messages` cache, then this
     event will not be called.
 
     .. note::
@@ -325,7 +299,7 @@ to handle it, which defaults to print a traceback and ignoring the exception.
 
 .. function:: on_raw_reaction_add(payload)
 
-    Called when a message has a reaction added. Unlike :func:`on_reaction_add`, this is
+    Called when a reaction has a reaction added. Unlike :func:`on_reaction_add`, this is
     called regardless of the state of the internal message cache.
 
     :param payload: The raw event payload data.
@@ -334,7 +308,7 @@ to handle it, which defaults to print a traceback and ignoring the exception.
 .. function:: on_reaction_remove(reaction, user)
 
     Called when a message has a reaction removed from it. Similar to on_message_edit,
-    if the message is not found in the internal message cache, then this event
+    if the message is not found in the :attr:`Client.messages` cache, then this event
     will not be called.
 
     .. note::
@@ -342,11 +316,11 @@ to handle it, which defaults to print a traceback and ignoring the exception.
         To get the message being reacted, access it via :attr:`Reaction.message`.
 
     :param reaction: A :class:`Reaction` showing the current state of the reaction.
-    :param user: A :class:`User` or :class:`Member` of the user whose reaction was removed.
+    :param user: A :class:`User` or :class:`Member` of the user who removed the reaction.
 
 .. function:: on_raw_reaction_remove(payload)
 
-    Called when a message has a reaction removed. Unlike :func:`on_reaction_remove`, this is
+    Called when a reaction has a reaction removed. Unlike :func:`on_reaction_remove`, this is
     called regardless of the state of the internal message cache.
 
     :param payload: The raw event payload data.
@@ -355,7 +329,7 @@ to handle it, which defaults to print a traceback and ignoring the exception.
 .. function:: on_reaction_clear(message, reactions)
 
     Called when a message has all its reactions removed from it. Similar to :func:`on_message_edit`,
-    if the message is not found in the internal message cache, then this event
+    if the message is not found in the :attr:`Client.messages` cache, then this event
     will not be called.
 
     :param message: The :class:`Message` that had its reactions cleared.
@@ -415,18 +389,6 @@ to handle it, which defaults to print a traceback and ignoring the exception.
     :param last_pin: A ``datetime.datetime`` object representing when the latest message
                      was pinned or ``None`` if there are no pins.
 
-.. function:: on_guild_integrations_update(guild)
-
-    Called whenever an integration is created, modified, or removed from a guild.
-
-    :param guild: The :class:`Guild` that had its integrations updated.
-
-.. function:: on_webhooks_update(channel)
-
-    Called whenever a webhook is created, modified, or removed from a guild channel.
-
-    :param channel: The :class:`abc.GuildChannel` that had its webhooks updated.
-
 .. function:: on_member_join(member)
               on_member_remove(member)
 
@@ -442,24 +404,12 @@ to handle it, which defaults to print a traceback and ignoring the exception.
 
     - status
     - game playing
+    - avatar
     - nickname
     - roles
 
     :param before: The :class:`Member` that updated their profile with the old info.
     :param after: The :class:`Member` that updated their profile with the updated info.
-
-.. function:: on_user_update(before, after)
-
-    Called when a :class:`User` updates their profile.
-
-    This is called when one or more of the following things change:
-
-    - avatar
-    - username
-    - discriminator
-
-    :param before: The :class:`User` that updated their profile with the old info.
-    :param after: The :class:`User` that updated their profile with the updated info.
 
 .. function:: on_guild_join(guild)
 
@@ -534,8 +484,8 @@ to handle it, which defaults to print a traceback and ignoring the exception.
 
     The following, but not limited to, examples illustrate when this event is called:
 
-    - A member joins a voice channel.
-    - A member leaves a voice channel.
+    - A member joins a voice room.
+    - A member leaves a voice room.
     - A member is muted or deafened by their own accord.
     - A member is muted or deafened by a guild administrator.
 
@@ -562,7 +512,8 @@ to handle it, which defaults to print a traceback and ignoring the exception.
 .. function:: on_group_join(channel, user)
               on_group_remove(channel, user)
 
-    Called when someone joins or leaves a :class:`GroupChannel`.
+    Called when someone joins or leaves a group, i.e. a :class:`PrivateChannel`
+    with a :attr:`PrivateChannel.type` of :attr:`ChannelType.group`.
 
     :param channel: The group that the user joined or left.
     :param user: The user that joined or left.
@@ -596,10 +547,34 @@ Utility Functions
 
 .. autofunction:: discord.utils.oauth_url
 
-.. autofunction:: discord.utils.escape_markdown
+Application Info
+------------------
 
-.. autofunction:: discord.utils.escape_mentions
+.. class:: AppInfo
 
+    A namedtuple representing the bot's application info.
+
+    .. attribute:: id
+
+        The application's ``client_id``.
+    .. attribute:: name
+
+        The application's name.
+    .. attribute:: description
+
+        The application's description
+    .. attribute:: icon
+
+        The application's icon hash if it exists, ``None`` otherwise.
+    .. attribute:: icon_url
+
+        A property that retrieves the application's icon URL if it exists.
+
+        If it doesn't exist an empty string is returned.
+    .. attribute:: owner
+
+        The owner of the application. This is a :class:`User` instance
+        with the owner's information at the time of the call.
 
 Profile
 ---------
@@ -627,18 +602,9 @@ Profile
     .. attribute:: partner
 
         A boolean indicating if the user is a Discord Partner.
-    .. attribute:: bug_hunter
-
-        A boolean indicating if the user is a Bug Hunter.
-    .. attribute:: early_supporter
-
-        A boolean indicating if the user has had premium before 10 October, 2018.
     .. attribute:: hypesquad
 
         A boolean indicating if the user is in Discord HypeSquad.
-    .. attribute:: hypesquad_houses
-
-        A list of :class:`HypeSquadHouse` that the user is in.
     .. attribute:: mutual_guilds
 
         A list of :class:`Guild` that the :class:`ClientUser` shares with this
@@ -679,13 +645,6 @@ All enumerations are subclasses of `enum`_.
     .. attribute:: group
 
         A private group text channel.
-    .. attribute:: news
-
-        A guild news channel.
-
-    .. attribute:: store
-
-        A guild store channel.
 
 .. class:: MessageType
 
@@ -716,6 +675,7 @@ All enumerations are subclasses of `enum`_.
     .. attribute:: pins_add
 
         The system message denoting that a pinned message has been added to a channel.
+
     .. attribute:: new_member
 
         The system message denoting that a new member has joined a Guild.
@@ -741,84 +701,62 @@ All enumerations are subclasses of `enum`_.
 
         A "Watching" activity type.
 
-.. class:: HypeSquadHouse
-
-    Specifies the HypeSquad house a user belongs to.
-
-    .. attribute:: bravery
-
-        The "Bravery" house.
-    .. attribute:: brilliance
-
-        The "Brilliance" house.
-    .. attribute:: balance
-
-        The "Balance" house.
-
 .. class:: VoiceRegion
 
     Specifies the region a voice server belongs to.
 
-    .. attribute:: amsterdam
+    .. attribute:: us_west
 
-        The Amsterdam region.
-    .. attribute:: brazil
-
-        The Brazil region.
-    .. attribute:: eu_central
-
-        The EU Central region.
-    .. attribute:: eu_west
-
-        The EU West region.
-    .. attribute:: frankfurt
-
-        The Frankfurt region.
-    .. attribute:: hongkong
-
-        The Hong Kong region.
-    .. attribute:: india
-
-        The India region.
-    .. attribute:: japan
-
-        The Japan region.
-    .. attribute:: london
-
-        The London region.
-    .. attribute:: russia
-
-        The Russia region.
-    .. attribute:: singapore
-
-        The Singapore region.
-    .. attribute:: southafrica
-
-        The South Africa region.
-    .. attribute:: sydney
-
-        The Sydney region.
-    .. attribute:: us_central
-
-        The US Central region.
+        The US West region.
     .. attribute:: us_east
 
         The US East region.
     .. attribute:: us_south
 
         The US South region.
-    .. attribute:: us_west
+    .. attribute:: us_central
 
-        The US West region.
-    .. attribute:: vip_amsterdam
+        The US Central region.
+    .. attribute:: eu_west
 
-        The Amsterdam region for VIP guilds.
+        The EU West region.
+    .. attribute:: eu_central
+
+        The EU Central region.
+    .. attribute:: singapore
+
+        The Singapore region.
+    .. attribute:: london
+
+        The London region.
+    .. attribute:: sydney
+
+        The Sydney region.
+    .. attribute:: amsterdam
+
+        The Amsterdam region.
+    .. attribute:: frankfurt
+
+        The Frankfurt region.
+
+    .. attribute:: brazil
+
+        The Brazil region.
+    .. attribute:: hongkong
+
+        The Hong Kong region.
+    .. attribute:: russia
+
+        The Russia region.
     .. attribute:: vip_us_east
 
         The US East region for VIP guilds.
     .. attribute:: vip_us_west
 
         The US West region for VIP guilds.
+    .. attribute:: vip_amsterdam
+
+        The Amsterdam region for VIP guilds.
 
 .. class:: VerificationLevel
 
@@ -871,17 +809,6 @@ All enumerations are subclasses of `enum`_.
     .. attribute:: double_table_flip
 
         An alias for :attr:`extreme`.
-
-.. class:: NotificationLevel
-
-    Specifies whether a :class:`Guild` has notifications on for all messages or mentions only by default.
-
-    .. attribute:: all_messages
-
-        Members receive notifications for every message regardless of them being mentioned.
-    .. attribute:: only_mentions
-
-        Members receive notifications for messages they are mentioned in.
 
 .. class:: ContentFilter
 
@@ -944,6 +871,23 @@ All enumerations are subclasses of `enum`_.
         The member is "invisible". In reality, this is only used in sending
         a presence a la :meth:`Client.change_presence`. When you receive a
         user's presence this will be :attr:`offline` instead.
+
+.. class:: RelationshipType
+
+    Specifies the type of :class:`Relationship`
+
+    .. attribute:: friend
+
+        You are friends with this user.
+    .. attribute:: blocked
+
+        You have blocked this user.
+    .. attribute:: incoming_request
+
+        The user has sent you a friend request.
+    .. attribute:: outgoing_request
+
+        You have sent a friend request to this user.
 
 
 .. class:: AuditLogAction
@@ -1354,116 +1298,6 @@ All enumerations are subclasses of `enum`_.
         The action is the update of something.
 
 
-.. class:: RelationshipType
-
-    Specifies the type of :class:`Relationship`.
-
-    .. note::
-
-        This only applies to users, *not* bots.
-
-    .. attribute:: friend
-
-        You are friends with this user.
-
-    .. attribute:: blocked
-
-        You have blocked this user.
-
-    .. attribute:: incoming_request
-
-        The user has sent you a friend request.
-
-    .. attribute:: outgoing_request
-
-        You have sent a friend request to this user.
-
-
-.. class:: UserContentFilter
-
-    Represents the options found in ``Settings > Privacy & Safety > Safe Direct Messaging``
-    in the Discord client.
-
-    .. note::
-
-        This only applies to users, *not* bots.
-
-    .. attribute:: all_messages
-
-        Scan all direct messages from everyone.
-
-    .. attribute:: friends
-
-        Scan all direct messages that aren't from friends.
-
-    .. attribute:: disabled
-
-        Don't scan any direct messages.
-
-
-.. class:: FriendFlags
-
-    Represents the options found in ``Settings > Privacy & Safety > Who Can Add You As A Friend``
-    in the Discord client.
-
-    .. note::
-
-        This only applies to users, *not* bots.
-
-    .. attribute:: noone
-
-        This allows no-one to add you as a friend.
-
-    .. attribute:: mutual_guilds
-
-        This allows guild members to add you as a friend.
-
-    .. attribute:: mutual_friends
-
-        This allows friends of friends to add you as a friend.
-
-    .. attribute:: guild_and_friends
-
-        This is a superset of :attr:`mutual_guilds` and :attr:`mutual_friends`.
-
-    .. attribute:: everyone
-
-        This allows everyone to add you as a friend.
-
-
-.. class:: PremiumType
-
-    Represents the user's Discord Nitro subscription type.
-
-    .. note::
-
-        This only applies to users, *not* bots.
-
-    .. attribute:: nitro
-
-        Represents the Discord Nitro with Nitro-exclusive games.
-
-    .. attribute:: nitro_classic
-
-        Represents the Discord Nitro with no Nitro-exclusive games.
-
-
-.. class:: Theme
-
-    Represents the theme synced across all Discord clients.
-
-    .. note::
-
-        This only applies to users, *not* bots.
-
-    .. attribute:: light
-
-        Represents the Light theme on Discord.
-
-    .. attribute:: dark
-
-        Represents the Dark theme on Discord.
-
 
 Async Iterator
 ----------------
@@ -1472,10 +1306,21 @@ Some API functions return an "async iterator". An async iterator is something th
 capable of being used in an `async for <https://docs.python.org/3/reference/compound_stmts.html#the-async-for-statement>`_
 statement.
 
-These async iterators can be used as follows: ::
+These async iterators can be used as follows in 3.5 or higher: ::
 
     async for elem in channel.history():
         # do stuff with elem here
+
+If you are using 3.4 however, you will have to use the more verbose way: ::
+
+    iterator = channel.history() # or whatever returns an async iterator
+    while True:
+        try:
+            item = yield from iterator.next()
+        except discord.NoMoreItems:
+            break
+
+        # do stuff with item here
 
 Certain utilities make working with async iterators easier, detailed below.
 
@@ -1488,7 +1333,8 @@ Certain utilities make working with async iterators easier, detailed below.
 
         .. describe:: async for x in y
 
-            Iterates over the contents of the async iterator.
+            Iterates over the contents of the async iterator. Note
+            that this is only available in Python 3.5 or higher.
 
 
     .. comethod:: next()
@@ -1707,12 +1553,6 @@ this goal, it must make use of a couple of data classes that aid in this goal.
 
         See also :attr:`Guild.verification_level`.
 
-    .. attribute:: default_notifications
-
-        :class:`NotificationLevel` – The guild's default notification level.
-
-        See also :attr:`Guild.default_notifications`.
-
     .. attribute:: explicit_content_filter
 
         :class:`ContentFilter` – The guild's content filter.
@@ -1876,13 +1716,6 @@ this goal, it must make use of a couple of data classes that aid in this goal.
 
         See also :attr:`User.avatar`.
 
-    .. attribute:: slowmode_delay
-
-        :class:`int` – The number of seconds members have to wait before
-        sending another message in the channel.
-
-        See also :attr:`TextChannel.slowmode_delay`.
-
 .. this is currently missing the following keys: reason and application_id
    I'm not sure how to about porting these
 
@@ -2007,12 +1840,6 @@ Attachment
 ~~~~~~~~~~~
 
 .. autoclass:: Attachment()
-    :members:
-
-Asset
-~~~~~
-
-.. autoclass:: Asset()
     :members:
 
 Message
@@ -2153,41 +1980,11 @@ GroupChannel
     .. autocomethod:: typing
         :async-with:
 
-PartialInviteGuild
-~~~~~~~~~~~~~~~~~~~
-
-.. autoclass:: PartialInviteGuild()
-    :members:
-
-PartialInviteChannel
-~~~~~~~~~~~~~~~~~~~~~
-
-.. autoclass:: PartialInviteChannel()
-    :members:
 
 Invite
 ~~~~~~~
 
 .. autoclass:: Invite()
-    :members:
-
-WidgetChannel
-~~~~~~~~~~~~~~~
-
-.. autoclass:: WidgetChannel()
-    :members:
-
-WidgetMember
-~~~~~~~~~~~~~
-
-.. autoclass:: WidgetMember()
-    :members:
-    :inherited-members:
-
-Widget
-~~~~~~~
-
-.. autoclass:: Widget()
     :members:
 
 RawMessageDeleteEvent
@@ -2324,20 +2121,3 @@ The following exceptions are thrown by the library.
 .. autoexception:: discord.opus.OpusError
 
 .. autoexception:: discord.opus.OpusNotLoaded
-
-Exception Hierarchy
-~~~~~~~~~~~~~~~~~~~~~
-
-.. exception_hierarchy::
-
-    - :exc:`Exception`
-        - :exc:`DiscordException`
-            - :exc:`ClientException`
-            - :exc:`NoMoreItems`
-            - :exc:`GatewayNotFound`
-            - :exc:`HTTPException`
-                - :exc:`Forbidden`
-                - :exc:`NotFound`
-            - :exc:`InvalidArgument`
-            - :exc:`LoginFailure`
-            - :exc:`ConnectionClosed`
